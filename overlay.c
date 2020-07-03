@@ -1,10 +1,7 @@
 #include <deadbeef/deadbeef.h>
 #include <stdio.h>
-#include <glib.h>
 #include <cairo.h>
 #include <cairo-xlib.h>
-#include <pthread.h>
-#include <gdk/gdk.h>
 #include <X11/Xlib.h>
 #include <X11/X.h>
 #include <X11/Xutil.h>
