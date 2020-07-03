@@ -140,7 +140,7 @@ static int action_show_overlay(struct DB_plugin_action_s *action, void* ctx){
 }
 
 static int message(uint32_t id, uintptr_t ctx, uint32_t p1, uint32_t p2){
-	if(id == DB_EV_NEXT || id == DB_EV_PREV){
+	if(id == DB_EV_SONGCHANGED){
 		show_overlay();
 	}
 }
@@ -191,7 +191,7 @@ static DB_misc_t plugin = {
         .name = "X11 overlay",
         .descr = "show overlay song info",
         .copyright = "Murloc Knight",
-        .website = "",
+        .website = "https://github.com/KnightMurloc/DeadBeef-X11-Overlay-Plugin-",
 
         .command = NULL,
         .start = start,
