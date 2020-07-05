@@ -17,11 +17,14 @@ XSetWindowAttributes attrs;
 XVisualInfo vinfo;
 int c; 
 int width;
+Window overlay;
 
 static int wait = 0;
 static int is_viseble = 0;
 
-void draw(cairo_t *cr,const char* title) {
+void draw(void** args) {
+	cairo_t *cr = args[0];
+	const char* title = args[1];
 	if(title == NULL){
 		return;
 	}
@@ -61,7 +64,10 @@ void draw(cairo_t *cr,const char* title) {
 		XFlush(display);
 		usleep(10000);
 	}
-
+	XEvent event = {0};
+	event.type = EnterNotify;
+	XSendEvent(display,overlay,0,EnterWindowMask,&event);
+	XFlush(display);
 }
 
 char* format_string(DB_playItem_t* it){
@@ -99,22 +105,32 @@ static void window_thread(void* arg){
 
 	char* title = format_string(nowplaying);
 
-	Window overlay = XCreateWindow(
+	overlay = XCreateWindow(
 	        display, root,
 	        0, 0, width, 50, 0,
 	        vinfo.depth, InputOutput, 
 	        vinfo.visual,
 	        CWOverrideRedirect | CWColormap | CWBackPixel | CWBorderPixel, &attrs
 	);
+	XSelectInput(display, overlay, EnterWindowMask);
 	XMapWindow(display, overlay);
 	cairo_surface_t* surf = cairo_xlib_surface_create(display, overlay,
                                   vinfo.visual,
                                   width, 50);
 	cairo_t* cr = cairo_create(surf);
-	draw(cr,title);
-	free(title);
+	//draw(cr,title);
+	void* args[] = {cr,title};
+	intptr_t thread = deadbeef->thread_start(draw,args);
+	XEvent event;
+	while(1){
+		XNextEvent(display,&event);
+		if(event.type == EnterNotify){
+			break;
+		}
+	}
+	deadbeef->thread_detach(thread);
 	XFlush(display);
-
+	
 	cairo_destroy(cr);
 	cairo_surface_destroy(surf);
 	XUnmapWindow(display, overlay);
@@ -122,6 +138,7 @@ static void window_thread(void* arg){
 	XFlush(display);
 	deadbeef->pl_item_unref(nowplaying);
 	is_viseble = 0;
+	free(title);
 }
 
 static void show_overlay(){
@@ -158,6 +175,7 @@ static int start(){
 	attrs.colormap = XCreateColormap(display, root, vinfo.visual, AllocNone);
 	attrs.background_pixel = 0;
 	attrs.border_pixel = 0;
+	attrs.event_mask = EnterWindowMask;
 
 	Screen* screen;
 	screen = ScreenOfDisplay(display, 0);
@@ -183,6 +201,9 @@ static DB_plugin_action_t* get_actions(DB_playItem_t *it){
 	return &show_action;
 }
 
+static const char settings_dlg[] = "property \"height\" entry overlay.height \"50\""
+"";
+
 static DB_misc_t plugin = {
     .plugin = {
         .api_vmajor = 1,
@@ -201,7 +222,7 @@ static DB_misc_t plugin = {
         .exec_cmdline = NULL,
         .get_actions = get_actions,
         .message = message,
-        .configdialog = NULL
+        .configdialog = settings_dlg
     }
 };
 
