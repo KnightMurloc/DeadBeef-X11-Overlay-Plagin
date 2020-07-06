@@ -22,6 +22,7 @@ int height = 50;
 char title_format[MAX_LEN];
 char title_font[MAX_LEN];
 int font_size = 20;
+int wait_time;
 Window overlay;
 
 static int wait = 0;
@@ -39,7 +40,7 @@ void draw(void** args) {
 	cairo_text_extents(cr, title, &extents);
 	cairo_set_operator (cr, CAIRO_OPERATOR_SOURCE);
 	for(float i = 0; i < 1.57f; i+= 0.1f){
-		cairo_set_source_rgba(cr, 0, 0, 0, 0.4 * sin(i));
+		cairo_set_source_rgba(cr, 0, 0, 0, 0.5 * sin(i));
 		cairo_move_to(cr,0,0);
     		cairo_rectangle(cr, 0, 0, width, height);
 		
@@ -54,11 +55,11 @@ void draw(void** args) {
 	wait = 1;
 	do{
 		wait--;
-		sleep(3);
+		sleep(wait_time);
 	}while(wait);
 	
 	for(float i = 1.57f; i < 3.14f; i+= 0.1f){
-		cairo_set_source_rgba(cr, 0, 0, 0, 0.4 * sin(i));
+		cairo_set_source_rgba(cr, 0, 0, 0, 0.5 * sin(i));
 		cairo_move_to(cr,0,0);
     	cairo_rectangle(cr, 0, 0, width, height);
 		
@@ -166,6 +167,7 @@ static int message(uint32_t id, uintptr_t ctx, uint32_t p1, uint32_t p2){
 		deadbeef->conf_get_str("overlay.title","%artist% :: %title% $if(%album%,. from )%album% :: %length%\"",title_format,MAX_LEN);
 		font_size = deadbeef->conf_get_int("overlay.font_size",20);
 		deadbeef->conf_get_str("overlay.font_name","Sans Regular",title_font,MAX_LEN);
+		wait_time = deadbeef->conf_get_int("overlay.wait_time",3);
 	}
 }
 
@@ -212,7 +214,8 @@ static const char settings_dlg[] =
 "property \"height\" entry overlay.height \"50\";\n"
 "property \"title\" entry overlay.title \"%artist% :: %title% $if(%album%,. from )%album% :: %length%\";\n"
 "property \"Font size\" entry overlay.font_size \"20\";\n"
-"property \"Font\" entry overlay.font_name \"Sans Regular\";\n";
+"property \"Font\" entry overlay.font_name \"Sans Regular\";\n"
+"property \"show time\" entry overlay.wait_time \"3\";\n";
 
 static DB_misc_t plugin = {
     .plugin = {
