@@ -8,6 +8,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <mqueue.h>
+#include <unistr.h>
 
 #define MAX_STR_LEN 256
 
@@ -124,7 +125,17 @@ void* update_thread(void* arg){
 
 	//printf("%s\n",msg);
 	//continue;
-char* markup = g_markup_printf_escaped("<span foreground='white' font='30'>\%s</span>",msg+1);
+	char* clear_msg[200];
+	if(u8_strlen(msg+1) > 100){
+		//msg[100] = '\0';
+		u8_cpy(clear_msg, msg+1, 100);
+	}else{
+		u8_cpy(clear_msg, msg+1, u8_strlen(msg+1));
+	}
+GError* error;
+//char* clear_msg = g_locale_to_utf8(msg+1,-1,NULL,NULL,&error);
+//snprintf(clear_msg, 200,"%s",msg+1);
+char* markup = g_markup_printf_escaped("<span foreground='white' font='30'>\%s</span>",clear_msg);
 gdk_threads_enter();
 gtk_label_set_markup(GTK_LABEL(lable),markup);
         //gtk_label_set_text(GTK_LABEL(lable),mem);
@@ -218,7 +229,7 @@ int main(int argc,char* args[]) {
     //pthread_create(&p_config_thread,NULL,config_thread,NULL);
 
     gtk_widget_show_all(window);
-    //gtk_widget_hide(window);
+    gtk_widget_hide(window);
 
     //pthread_t thread2;
     //pthread_create(&thread,NULL,update_thread,NULL);
