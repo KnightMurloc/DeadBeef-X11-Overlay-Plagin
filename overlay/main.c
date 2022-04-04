@@ -125,7 +125,7 @@ void* update_thread(void* arg){
 
 	//printf("%s\n",msg);
 	//continue;
-	char* clear_msg[200];
+	char clear_msg[200];
 	if(u8_strlen(msg+1) > 100){
 		//msg[100] = '\0';
 		u8_cpy(clear_msg, msg+1, 100);
