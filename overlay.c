@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <math.h>
 #include <stdlib.h>
+#include <pango/pangocairo.h>
+
 
 #define MAX_LEN 256
 
@@ -34,24 +36,33 @@ void draw(void** args) {
 	if(title == NULL){
 		return;
 	}
-	cairo_select_font_face(cr, title_font,CAIRO_FONT_SLANT_NORMAL,CAIRO_FONT_WEIGHT_NORMAL);
-	cairo_set_font_size(cr, font_size);
+    PangoLayout *layout;
+    PangoFontDescription *desc;
+    layout = pango_cairo_create_layout (cr);
+    pango_layout_set_text (layout, title, -1);
+    desc = pango_font_description_from_string ("Sans Regular 20");
+    pango_layout_set_font_description (layout, desc);
+    pango_font_description_free(desc);
 	cairo_text_extents_t extents;
 	cairo_text_extents(cr, title, &extents);
 	cairo_set_operator (cr, CAIRO_OPERATOR_SOURCE);
 	for(float i = 0; i < 1.57f; i+= 0.1f){
+        int w, h;
 		cairo_set_source_rgba(cr, 0, 0, 0, 0.5 * sin(i));
 		cairo_move_to(cr,0,0);
-    		cairo_rectangle(cr, 0, 0, width, height);
-		
-    		cairo_fill(cr);
-		cairo_set_source_rgba(cr, 1, 1, 1, sin(i));
-		cairo_move_to(cr,width/2 - extents.width/2,height/2);
-		cairo_show_text(cr,title);
+		cairo_rectangle(cr, 0, 0, width, height);
+		cairo_fill(cr);
+
+        cairo_set_source_rgb (cr, 1.0, 1.0, 1.0);
+        pango_cairo_update_layout (cr, layout);
+        pango_layout_get_pixel_size(layout,&w,&h);
+		cairo_move_to(cr,width/2 - w/2,height/2 - h/2);
+        pango_cairo_show_layout (cr, layout);
 		XFlush(display);
-		usleep(10000);
+        usleep(50000);
+
 	}
-	
+
 	wait = 1;
 	do{
 		wait--;
@@ -59,20 +70,24 @@ void draw(void** args) {
 	}while(wait);
 	
 	for(float i = 1.57f; i < 3.14f; i+= 0.1f){
-		cairo_set_source_rgba(cr, 0, 0, 0, 0.5 * sin(i));
-		cairo_move_to(cr,0,0);
-    	cairo_rectangle(cr, 0, 0, width, height);
-		
-    	cairo_fill(cr);
-		cairo_set_source_rgba(cr, 1, 1, 1, sin(i));
-		cairo_move_to(cr,width/2 - extents.width/2,height/2);
-		cairo_show_text(cr,title);
-		XFlush(display);
-		usleep(10000);
+        int w, h;
+        cairo_set_source_rgba(cr, 0, 0, 0, 0.5 * sin(i));
+        cairo_move_to(cr,0,0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        cairo_fill(cr);
+
+        cairo_set_source_rgb (cr, 1.0, 1.0, 1.0);
+        pango_cairo_update_layout (cr, layout);
+        pango_layout_get_pixel_size(layout,&w,&h);
+        cairo_move_to(cr,width/2 - w/2,height/2 - h/2);
+        pango_cairo_show_layout (cr, layout);
+        XFlush(display);
+        usleep(50000);
 	}
+    g_object_unref (layout);
 	XEvent event = {0};
-	event.type = EnterNotify;
-	XSendEvent(display,overlay,0,EnterWindowMask,&event);
+	event.type = PropertyNotify;
+	XSendEvent(display,overlay,0,PropertyChangeMask,&event);
 	XFlush(display);
 }
 
@@ -113,7 +128,7 @@ static void window_thread(void* arg){
 	        vinfo.visual,
 	        CWOverrideRedirect | CWColormap | CWBackPixel | CWBorderPixel, &attrs
 	);
-	XSelectInput(display, overlay, EnterWindowMask);
+	XSelectInput(display, overlay, PropertyChangeMask);
 	XMapWindow(display, overlay);
 	cairo_surface_t* surf = cairo_xlib_surface_create(display, overlay,
                                   vinfo.visual,
@@ -123,9 +138,10 @@ static void window_thread(void* arg){
 	void* args[] = {cr,title};
 	intptr_t thread = deadbeef->thread_start(draw,args);
 	XEvent event;
+//    update(NULL);
 	while(1){
 		XNextEvent(display,&event);
-		if(event.type == EnterNotify){
+		if(event.type == PropertyNotify){
 			break;
 		}
 	}
@@ -164,7 +180,7 @@ static int message(uint32_t id, uintptr_t ctx, uint32_t p1, uint32_t p2){
 	if (id == DB_EV_CONFIGCHANGED)
 	{
 		height = deadbeef->conf_get_int("overlay.height",50);
-		deadbeef->conf_get_str("overlay.title","%artist% :: %title% $if(%album%,. from )%album% :: %length%\"",title_format,MAX_LEN);
+		deadbeef->conf_get_str("overlay.title","%artist% :: %title% $if(%album%,. from )%album% :: %length%",title_format,MAX_LEN);
 		font_size = deadbeef->conf_get_int("overlay.font_size",20);
 		deadbeef->conf_get_str("overlay.font_name","Sans Regular",title_font,MAX_LEN);
 		wait_time = deadbeef->conf_get_int("overlay.wait_time",3);

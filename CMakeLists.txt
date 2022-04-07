@@ -14,5 +14,7 @@ LINK_DIRECTORIES(${GTK3_LIBRARY_DIRS})
 ADD_DEFINITIONS(${GTK3_CFLAGS_OTHER})
 
 add_library(overlay SHARED overlay.c)
+#add_executable(start main.c)
+#target_link_libraries(start ${X11_LIBRARIES} ${GTK3_LIBRARIES} ${CAIRO_LIB_RELEASE} m)
 target_link_libraries(overlay ${X11_LIBRARIES} ${GTK3_LIBRARIES} ${CAIRO_LIB_RELEASE} m)
 
