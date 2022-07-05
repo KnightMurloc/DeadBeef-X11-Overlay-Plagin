@@ -81,7 +81,7 @@ static int message(uint32_t id, uintptr_t ctx, uint32_t p1, uint32_t p2){
 	if (id == DB_EV_CONFIGCHANGED)
 	{
 		int height = deadbeef->conf_get_int("overlay.height",50);
-		deadbeef->conf_get_str("overlay.title","%artist% :: %title% $if(%album%,. from )%album% :: %length%\"",title_format,MAX_LEN);
+		deadbeef->conf_get_str("overlay.title","%artist% :: %title% $if(%album%,. from )%album% :: %length%",title_format,MAX_LEN);
 		int show_time = config->show_time = deadbeef->conf_get_int("overlay.wait_time",3);
 		memset(title, 0, MAX_LEN);
 		sprintf(title+1, "%d %d", height, show_time);
