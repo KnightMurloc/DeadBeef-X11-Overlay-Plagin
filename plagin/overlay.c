@@ -85,9 +85,7 @@ static int message(uint32_t id, uintptr_t ctx, uint32_t p1, uint32_t p2){
 		int show_time = config->show_time = deadbeef->conf_get_int("overlay.wait_time",3);
 		memset(title, 0, MAX_LEN);
 		sprintf(title+1, "%d %d", height, show_time);
-		//printf("config: %s\n", title+1);
 		send_msg(CONFIG);
-		//sem_post(config_sem);
 	}
 }
 
@@ -104,51 +102,6 @@ static const char *getUserName()
 }
 
 static int start(){
-	/*
-	printf("test MURLOC\n");
-	title_fd = shm_open("deadbeef_overlay",O_RDWR | O_CREAT,0644);
-	if (title_fd < 0)
-	{
-		fprintf(stderr,"create title shared memory error\n");
-	}
-	ftruncate(title_fd,MAX_LEN);
-	title = mmap(NULL,MAX_LEN,PROT_READ | PROT_WRITE,MAP_SHARED,title_fd,0);
-	if ((caddr_t) -1  == title)
-	{
-		fprintf(stderr,"map title shared memory error\n");
-	}
-	memset(title,0,MAX_LEN);
-
-	
-	config_fd = shm_open("deadbeef_config",O_RDWR | O_CREAT,0644);
-	if (config_fd < 0)
-	{
-		fprintf(stderr,"create config shared memory error\n");
-	}
-	ftruncate(config_fd,sizeof(Config));
-	config = mmap(NULL,sizeof(Config),PROT_READ | PROT_WRITE,MAP_SHARED,config_fd,0);
-	if ((caddr_t) -1  == config)
-	{
-		fprintf(stderr,"map config shared memory error\n");
-	}
-	memset(config,0,sizeof(Config));
-
-	title_sem = sem_open("deadbeef_overlay_sem",O_CREAT,0644,0);
-	if (title_sem == (void*) -1)
-	{
-		fprintf(stderr,"title semaphore open error\n");
-	}
-
-	config_sem = sem_open("deadbeef_config_sem",O_CREAT,0644,0);
-	if (config_sem == (void*) -1)
-	{
-		fprintf(stderr,"config semaphore open error\n");
-	}
-
-	//char username[33] = {0};
-	//getlogin_r(username,33);
-	*/
-
 	config = malloc(sizeof(config));
 
 	title = malloc(MAX_LEN);
@@ -171,7 +124,6 @@ static int start(){
 	pid_t pid;
 	char *argv[] = {"overlay", (char *) 0};
 	int ret = posix_spawn(&pid,path,NULL,NULL,argv,environ);
-	printf("test: %s \n", path);
 	
 	return 0;
 }
@@ -219,6 +171,16 @@ static DB_plugin_action_t show_action = {
 	.next = NULL
 };
 
+static int command_test(const char *cmdline, int cmdline_size){
+ printf("%d\n",cmdline_size);
+ return 0;
+}
+
+static int cmd2_test(int cmd, ...){
+	printf("%d\n",cmd);
+	return 0;
+}
+
 static DB_plugin_action_t* get_actions(DB_playItem_t *it){
 	return &show_action;
 }
@@ -232,13 +194,14 @@ static DB_misc_t plugin = {
     .plugin = {
         .api_vmajor = 1,
         .api_vminor = 10,
-        .id = NULL,
+        .id = "overlay",
         .name = "X11 overlay2",
         .descr = "show overlay song info\ntitle format help:https://github.com/DeaDBeeF-Player/deadbeef/wiki/Title-formatting-2.0",
         .copyright = "Murloc Knight",
         .website = "https://github.com/KnightMurloc/DeadBeef-X11-Overlay-Plugin-",
 
         .command = NULL,
+				.exec_cmdline = command_test,
         .start = start,
         .stop = stop,
         .connect = NULL,

@@ -9,6 +9,10 @@
 #include <stdlib.h>
 #include <mqueue.h>
 #include <unistr.h>
+#include <X11/Xlib.h>
+#include <gdk/gdkx.h>
+#include <X11/extensions/shape.h>
+#include <X11/extensions/Xfixes.h>
 
 #define MAX_STR_LEN 256
 
@@ -24,162 +28,91 @@ float opacity = 0;
 int width = 1920;
 
 int config_fd;
-sem_t* config_sem;
 
 void* config_thread(void* arg){
-	/*
-    config_fd = shm_open("deadbeef_config",O_RDWR,0644);
 
+}
 
-	
-    if(config_fd < 0){
-        fprintf(stderr,"open config shared memory error\n");
-        return NULL;
+size_t count_utf8_code_points(const char *s) {
+    size_t count = 0;
+    while (*s) {
+        count += (*s++ & 0xC0) != 0x80;
     }
-
-    config = mmap(NULL, sizeof(Config),PROT_READ | PROT_WRITE,MAP_SHARED,config_fd,0);
-    if((caddr_t) -1  == config){
-        fprintf(stderr,"map config shared memory error\n");
-        return NULL;
-    }
-    config_sem = sem_open("deadbeef_config_sem",O_CREAT,0644,0);
-    if(config_sem == (void*) -1){
-        fprintf(stderr,"config semaphore open error\n");
-        return NULL;
-    }
-
-    while(1){
-        sem_wait(config_sem);
-        gtk_window_set_default_size(GTK_WINDOW(window),width,config->height);
-        gtk_widget_modify_font(lable, pango_font_description_from_string( config->font));
-//        gtk_window_set_defa
-    }
-	*/
+    return count;
 }
 
 void* update_thread(void* arg){
-	printf("test\n");
-/*
-    int fd = shm_open("deadbeef_overlay",O_RDWR,0644);
-    if(fd < 0){
-        fprintf(stderr,"open title shared memory error\n");
-        return NULL;
-    }
+    struct mq_attr attr;
 
-    char* mem = mmap(NULL,MAX_STR_LEN,PROT_READ | PROT_WRITE,MAP_SHARED,fd,0);
-    if((caddr_t) -1  == mem){
-        fprintf(stderr,"map title shared memory error\n");
-        return NULL;
-    }
-
-    sem_t* sem = sem_open("deadbeef_overlay_sem",O_CREAT,0644,0);
-    if(sem == (void*) -1){
-        fprintf(stderr,"title semaphore open error\n");
-        return NULL;
-    }
-*/
-
-	struct mq_attr attr;
-
-	attr.mq_flags = 0;
+    attr.mq_flags = 0;
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = MAX_STR_LEN;
     attr.mq_curmsgs = 0;
 
-	mqd_t qq = mq_open("/deadbeef", O_RDWR | O_CREAT, 0660, &attr);
-
-	//char msg[MAX_STR_LEN];
-	char* msg = malloc(MAX_STR_LEN);
-	int show_time = 3;
+    mqd_t qq = mq_open("/deadbeef", O_RDWR | O_CREAT, 0660, &attr);
+    //char msg[MAX_STR_LEN];
+    char* msg = malloc(MAX_STR_LEN);
+    int show_time = 3;
 
 
     while(1){
-		mq_receive(qq, msg, MAX_STR_LEN, NULL);
-
-        //sem_wait(sem);
+        mq_receive(qq, msg, MAX_STR_LEN, NULL);
+				printf("%s\n", msg+1);
         if(strcmp("q",msg) == 0){
-	//sem_close(sem);
-			//mq_close(qq);
-			//mq_unlink("deadbeef");
-		//sem_close(config_sem);
             break;
         }
-		//printf("type %d\n", msg[0]);
-		if(msg[0] == 0){
-			//printf("overlay: %d\n", msg[1]);
-			int height = -1;
-			int show_time_tmp = -1;
-			sscanf(msg+1,"%d %d", &height, &show_time_tmp);
-			//printf("%d %d\n", height, show_time_tmp);
-			if(height == -1 || show_time_tmp == -1){
-				continue;
-			}
-			gdk_threads_enter();
-			gtk_window_set_default_size(GTK_WINDOW(window),width,height);
-			gdk_threads_leave();
-			show_time = show_time_tmp;
-			continue;
-		}
-		//printf("%d\n", show_time);
-
-
-	//printf("%s\n",msg);
-	//continue;
-	char clear_msg[200];
-	if(u8_strlen(msg+1) > 100){
-		//msg[100] = '\0';
-		u8_cpy(clear_msg, msg+1, 100);
-	}else{
-		u8_cpy(clear_msg, msg+1, u8_strlen(msg+1));
-	}
-GError* error;
-//char* clear_msg = g_locale_to_utf8(msg+1,-1,NULL,NULL,&error);
-//snprintf(clear_msg, 200,"%s",msg+1);
-char* markup = g_markup_printf_escaped("<span foreground='white' font='30'>\%s</span>",clear_msg);
-gdk_threads_enter();
-gtk_label_set_markup(GTK_LABEL(lable),markup);
-        //gtk_label_set_text(GTK_LABEL(lable),mem);
+        if(msg[0] == 0){
+            int height = -1;
+            int show_time_tmp = -1;
+            sscanf(msg+1,"%d %d", &height, &show_time_tmp);
+            if(height == -1 || show_time_tmp == -1){
+                continue;
+            }
+            gdk_threads_enter();
+            gtk_window_set_default_size(GTK_WINDOW(window),width,height);
+            gdk_threads_leave();
+            show_time = show_time_tmp;
+            continue;
+        }
+        char clear_msg[200];
+				memset(clear_msg,0, sizeof(clear_msg));
+        if(g_utf8_strlen(msg+1, -1) > 100){
+            g_utf8_strncpy(clear_msg, msg+1, 100);
+        }else{
+            g_utf8_strncpy(clear_msg, msg+1, g_utf8_strlen(msg+1, -1));
+        }
+        GError* error;
+        char* markup = g_markup_printf_escaped("<span foreground='white' font='30'>\%s</span>",clear_msg);
+        gdk_threads_enter();
+        gtk_label_set_markup(GTK_LABEL(lable),markup);
         gtk_widget_show(window);
-gdk_threads_leave();
-g_free(markup);
+        gdk_threads_leave();
+        g_free(markup);
         for (float i = 0; i < 1.57f; i+=0.1f) {
             opacity = sinf(i);
-gdk_threads_enter();
+            gdk_threads_enter();
             gtk_widget_set_opacity(lable, opacity);
-gdk_threads_leave();
+            gdk_threads_leave();
             usleep(50000);
         }
-	//printf("%d\n",config->show_time);
-        //sleep(config->show_time);
-	sleep(3);
+        sleep(3);
         for (float i = 1.57f; i < 3.14f; i+= 0.1f) {
             opacity = sinf(i);
-gdk_threads_enter();
+            gdk_threads_enter();
             gtk_widget_set_opacity(lable, opacity);
-gdk_threads_leave();
+            gdk_threads_leave();
             usleep(50000);
         }
-gdk_threads_enter();
-	gtk_widget_hide(window);
-gdk_threads_leave();
-	printf("TEST\n");
+        gdk_threads_enter();
+        gtk_widget_hide(window);
+        gdk_threads_leave();
+        printf("TEST\n");
     }
 
-	free(msg);
+    free(msg);
 
-	mq_close(qq);
-	mq_unlink("deadbeef");
-    //munmap(config, sizeof(Config));
-    //close(config_fd);
-    //sem_close(config_sem);
-    //shm_unlink("deadbeef_config");
-
-    //munmap(mem,MAX_STR_LEN);
-    //close(fd);
-    //sem_close(sem);
-    //shm_unlink("deadbeef_overlay");
-
-    //pthread_cancel(p_config_thread);
+    mq_close(qq);
+    mq_unlink("deadbeef");
     gtk_main_quit();
     return NULL;
 }
@@ -190,7 +123,7 @@ void on_mouse_enter(){
 
 int main(int argc,char* args[]) {
 
-	gdk_threads_init();
+    gdk_threads_init();
 
     gtk_init(&argc,&args);
 
@@ -202,40 +135,35 @@ int main(int argc,char* args[]) {
     width = rectangle.width;
     gtk_window_set_default_size(GTK_WINDOW(window),width,50);
     gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-    //gtk_window_set_decorated(GTK_WINDOW(window), FALSE);
     gtk_widget_set_app_paintable(window, TRUE);
 
     g_signal_connect(G_OBJECT(window), "draw", G_CALLBACK(expose_draw), NULL);
     g_signal_connect(G_OBJECT(window), "screen-changed", G_CALLBACK(screen_changed), NULL);
-    //g_signal_connect(G_OBJECT(window),"enter-notify-event",G_CALLBACK(on_mouse_enter),NULL);
     screen_changed(window, NULL, NULL);
 
-    //char* markup = g_strdup_printf("<span foreground='green'>%s</span>","none");
+    char* markup = g_markup_printf_escaped("<span foreground='white' font='30'>\%s</span>","none");
 
-	char* markup = g_markup_printf_escaped("<span foreground='white' font='30'>\%s</span>","none");
-
-    //gtk_label_set_markup
 
     lable = gtk_label_new(NULL);
-    //gtk_label_set_markup(lable,"<span foreground='green'>none</span>");
-	gtk_label_set_markup(GTK_LABEL(lable),markup);
-	g_free(markup);
-    //gtk_widget_modify_font(lable, pango_font_description_from_string("30"));
+    gtk_label_set_markup(GTK_LABEL(lable),markup);
+    g_free(markup);
 
     gtk_container_add(GTK_CONTAINER(window),lable);
 
     pthread_t thread;
     pthread_create(&thread,NULL,update_thread,NULL);
-    //pthread_create(&p_config_thread,NULL,config_thread,NULL);
 
     gtk_widget_show_all(window);
-    gtk_widget_hide(window);
 
-    //pthread_t thread2;
-    //pthread_create(&thread,NULL,update_thread,NULL);
-    //pthread_create(&p_config_thread,NULL,config_thread,NULL);
-    //config->show_time = 3;
-printf("test\n");
+    GdkDisplay* disp = gdk_display_get_default();
+
+    Display* xdisp = gdk_x11_display_get_xdisplay(disp);
+    Window win = gdk_x11_window_get_xid(gtk_widget_get_window(window));
+
+    XRectangle rect;
+    XserverRegion region = XFixesCreateRegion(xdisp, &rect, 1);
+    XFixesSetWindowShapeRegion(xdisp, win, ShapeInput, 0, 0, region);
+    XFixesDestroyRegion(xdisp, region);
 
 
     gtk_main();
@@ -263,10 +191,8 @@ static gboolean expose_draw(GtkWidget *widget, GdkEventExpose *event, gpointer u
     cairo_t *cr = gdk_cairo_create(gtk_widget_get_window(widget));
 
     if (supports_alpha) {
-//        printf("setting transparent window\n");
         cairo_set_source_rgba (cr, 0.0, 0.0, 0.0, 0.4 * opacity);
     } else {
-//        printf("setting opaque window\n");
         cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
     }
 
