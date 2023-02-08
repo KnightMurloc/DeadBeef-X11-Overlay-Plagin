@@ -12,5 +12,5 @@ find_library(CAIRO cairo)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 set(CMAKE_C_STANDARD 11)
 
-add_executable(overlay main.c)
-target_link_libraries(overlay ${GTK3_LIBRARIES} ${CAIRO} pthread rt m)
+add_executable(overlay main.c utils.h)
+target_link_libraries(overlay ${GTK3_LIBRARIES} ${CAIRO} pthread rt m Xfixes X11 Xrandr)

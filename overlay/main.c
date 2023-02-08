@@ -13,6 +13,8 @@
 #include <gdk/gdkx.h>
 #include <X11/extensions/shape.h>
 #include <X11/extensions/Xfixes.h>
+#include <X11/Xatom.h>
+#include "utils.h"
 
 #define MAX_STR_LEN 256
 
@@ -25,6 +27,8 @@ GtkWidget* window;
 pthread_t p_config_thread;
 
 float opacity = 0;
+int offset_x = 0;
+int offset_y = 0;
 int width = 1920;
 
 int config_fd;
@@ -121,6 +125,42 @@ void on_mouse_enter(){
     gtk_widget_hide(window);
 }
 
+void init_xrandr(Display* dpy_){
+    dpy = dpy_;
+    root = XDefaultRootWindow(dpy);
+    int		event_base, error_base;
+    int		major, minor;
+    if (!XRRQueryExtension (dpy, &event_base, &error_base) ||
+        !XRRQueryVersion (dpy, &major, &minor))
+    {
+        fprintf (stderr, "RandR extension missing\n");
+        return;
+    }
+    if (major > 1 || (major == 1 && minor >= 2))
+        has_1_2 = True;
+    if (major > 1 || (major == 1 && minor >= 3))
+        has_1_3 = True;
+
+    get_screen (True);
+    get_crtcs();
+    get_outputs();
+
+    output_t *output;
+
+    for (output = all_outputs; output; output = output->next)
+    {
+
+        crtc_t* cur_crtc = output->crtc_info;
+        XRRCrtcInfo	*crtc_info = cur_crtc ? cur_crtc->crtc_info : NULL;
+        if(cur_crtc && output->primary){
+            offset_x = crtc_info->x;
+            offset_y = crtc_info->y;
+            break;
+        }
+
+    }
+}
+
 int main(int argc,char* args[]) {
 
     gdk_threads_init();
@@ -145,6 +185,8 @@ int main(int argc,char* args[]) {
 
 
     lable = gtk_label_new(NULL);
+		gtk_label_set_line_wrap(GTK_LABEL(lable), TRUE);
+		gtk_label_set_lines(GTK_LABEL(lable), 1);
     gtk_label_set_markup(GTK_LABEL(lable),markup);
     g_free(markup);
 
@@ -164,8 +206,23 @@ int main(int argc,char* args[]) {
     XserverRegion region = XFixesCreateRegion(xdisp, &rect, 1);
     XFixesSetWindowShapeRegion(xdisp, win, ShapeInput, 0, 0, region);
     XFixesDestroyRegion(xdisp, region);
+		Atom blur = XInternAtom(xdisp, "_KDE_NET_WM_BLUR_BEHIND_REGION", 0);
+		int data = 0;
+		XChangeProperty(xdisp,win,blur,XA_CARDINAL,32,PropModeReplace,&data,1);
+		//Atom type;
+		//int di;
+		//unsigned long size, dul;
+		//unsigned char *prop_ret = NULL;
+		//XGetWindowProperty(xdisp,win,blur,0,0,False,AnyPropertyType,&type,&di,&dul,&size,&prop_ret);
+		//printf("%d %d\n", di,size);
+		//printf("%d\n", win);
+		//printf("%d\n",win);
+		XChangeProperty(xdisp,win,blur,XA_CARDINAL,32,PropModeReplace,&data,1);
 
-
+		//printf("%d\n",XInternAtom(xdisp, "_KDE_NET_WM_BLUR_BEHIND_REGION", 0));
+    init_xrandr(xdisp);
+    gtk_window_move(GTK_WINDOW(window),offset_x,offset_y);
+    gtk_widget_hide(window);
     gtk_main();
 
     return 0;
